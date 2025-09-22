@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h3 class="text-center mb-4">📊 Appointment Statistics</h3>
+
+  <div class="row text-center">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-primary mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Booked</h5>
+          <p class="display-6 text-primary">{{ summary.Booked }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-success mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Confirmed</h5>
+          <p class="display-6 text-success">{{ summary.Confirmed }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-warning mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Completed</h5>
+          <p class="display-6 text-warning">{{ summary.Completed }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-danger mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Cancelled</h5>
+          <p class="display-6 text-danger">{{ summary.Cancelled }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
