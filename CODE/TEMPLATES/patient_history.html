@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>My Appointment History</h2>
+
+  <h4 class="mt-4">Upcoming</h4>
+  {% if upcoming %}
+    <ul class="list-group">
+      {% for appt in upcoming %}
+        <li class="list-group-item">
+          Dr. {{ appt.doctor.user.username }} → {{ appt.date }} {{ appt.time }} 
+          ({{ appt.status }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No upcoming appointments.</p>
+  {% endif %}
+
+  <h4 class="mt-4">Past</h4>
+  {% if past %}
+    <ul class="list-group">
+      {% for appt in past %}
+        <li class="list-group-item">
+          Dr. {{ appt.doctor.user.username }} → {{ appt.date }} {{ appt.time }} 
+          ({{ appt.status }})
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No past appointments.</p>
+  {% endif %}
+</div>
+{% endblock %}
