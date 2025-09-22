@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3 class="mb-4 text-center">📅 My Appointments</h3>
+
+  {% if appointments %}
+    <table class="table table-hover table-bordered text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>Doctor</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for appt in appointments %}
+        <tr>
+          <td>{{ appt.doctor.user.username }}</td>
+          <td>{{ appt.date }}</td>
+          <td>{{ appt.time }}</td>
+          <td>
+            {% if appt.status == "Booked" %}
+              <span class="badge bg-warning text-dark">Booked</span>
+            {% elif appt.status == "Confirmed" %}
+              <span class="badge bg-primary">Confirmed</span>
+            {% elif appt.status == "Completed" %}
+              <span class="badge bg-success">Completed</span>
+            {% else %}
+              <span class="badge bg-danger">Cancelled</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if appt.status != "Cancelled" and appt.status != "Completed" %}
+              <form method="post" action="{% url 'cancel_appointment' appt.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+              </form>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="alert alert-info text-center">
+      You haven’t booked any appointments yet.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
