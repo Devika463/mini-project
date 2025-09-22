@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>Patient Registration</h2>
+  <p>Registration form will go here.</p>
+</div>
+{% endblock %}
