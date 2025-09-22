@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3 class="mb-4 text-center">👨‍⚕️ Doctor Dashboard</h3>
+
+  <!-- Apply Leave Button -->
+  <div class="text-center mb-3">
+    <a href="{% url 'doctor_apply_leave' %}" class="btn btn-warning">Apply Leave</a>
+  </div>
+
+  {% if appointments %}
+    <table class="table table-striped table-hover table-bordered text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>Patient</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for appt in appointments %}
+        <tr>
+          <td>{{ appt.patient.user.username }}</td>
+          <td>{{ appt.date }}</td>
+          <td>{{ appt.time }}</td>
+          <td>
+            {% if appt.status == "Booked" %}
+              <span class="badge bg-warning text-dark">Booked</span>
+            {% elif appt.status == "Confirmed" %}
+              <span class="badge bg-primary">Confirmed</span>
+            {% elif appt.status == "Completed" %}
+              <span class="badge bg-success">Completed</span>
+            {% else %}
+              <span class="badge bg-danger">Cancelled</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if appt.status == "Booked" %}
+              <form method="post" action="{% url 'appointment_action' appt.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="confirm">
+                <button type="submit" class="btn btn-sm btn-success">Confirm</button>
+              </form>
+              <form method="post" action="{% url 'appointment_action' appt.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+              </form>
+            {% elif appt.status == "Confirmed" %}
+              <form method="post" action="{% url 'appointment_action' appt.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="complete">
+                <button type="submit" class="btn btn-sm btn-primary">Mark Completed</button>
+              </form>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="alert alert-info text-center">
+      No appointments available yet.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
