@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3 class="text-center mb-3">Apply Leave</h3>
+  <form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="date" class="form-label">Leave Date</label>
+      <input type="date" class="form-control" name="date" required>
+    </div>
+    <div class="mb-3">
+      <label for="reason" class="form-label">Reason</label>
+      <textarea class="form-control" name="reason"></textarea>
+    </div>
+    <button type="submit" class="btn btn-warning">Apply</button>
+  </form>
+</div>
+
+{% endblock %}
