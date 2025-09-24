@@ -10,7 +10,16 @@ from .forms import PatientSignUpForm, DoctorLeaveForm
 from .models import Doctor, Patient, Appointment, DoctorLeave
 from .utils import send_sms
 from .models import Notification
+from django.contrib.auth.views import LoginView
 
+class DoctorLoginView(LoginView):
+    template_name = "doctor_login.html"
+
+    def get_success_url(self):
+        return "/doctor-dashboard/"   # Redirect to doctor dashboard
+
+def welcome(request):
+    return render(request, "welcome.html")
 def home(request):
     doctors = Doctor.objects.all()
     return render(request, "home.html", {"doctors": doctors})
