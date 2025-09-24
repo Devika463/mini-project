@@ -216,15 +216,11 @@ def doctor_apply_leave(request):
             for appt in appointments:
                 appt.status = "Cancelled"
                 appt.save()
-
-                # Save notification for patient
+                # Create notification record
                 Notification.objects.create(
-                    user=appt.patient.user,
-                    message=(
-                        f"Your appointment with Dr.{doctor.user.username} on {appt.date} "
-                        f"has been cancelled due to leave."
-                    )
-                )
+                    patient=appt.patient,
+                     message=f"Your appointment with Dr.{doctor.user.username} on {appt.date} has been cancelled due to leave."
+                     )
 
             messages.success(request, "Leave applied successfully! Patients have been notified.")
             return redirect("doctor_dashboard")
@@ -234,7 +230,11 @@ def doctor_apply_leave(request):
     return render(request, "apply_leave.html", {"form": form})
 @login_required
 def my_notifications(request):
-    notifications = Notification.objects.filter(user=request.user).order_by("-created_at")
+    if not hasattr(request.user, "patient"):
+        return HttpResponseForbidden("Only patients can view notifications.")
+    
+    patient = request.user.patient
+    notifications = Notification.objects.filter(patient=patient).order_by("-created_at")
     return render(request, "notifications.html", {"notifications": notifications})
 
 
