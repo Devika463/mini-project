@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Find a Doctor</h2>
+
+    <!-- 🔽 Dropdown filter -->
+    <form method="get" class="mb-3">
+        <label for="specialization">Filter by Specialization:</label>
+        <select name="specialization" id="specialization" class="form-select" onchange="this.form.submit()">
+            <option value="All">All</option>
+            {% for spec in specializations %}
+                <option value="{{ spec }}" {% if spec == selected %}selected{% endif %}>{{ spec }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <!-- ✅ Doctors List -->
+    <div class="row">
+        {% for doctor in doctors %}
+            <div class="col-md-4">
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ doctor.user.username }}</h5>
+                        <p class="card-text"><b>Specialization:</b> {{ doctor.specialization }}</p>
+                        <p class="card-text"><b>Phone:</b> {{ doctor.phone }}</p>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <p>No doctors found.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
