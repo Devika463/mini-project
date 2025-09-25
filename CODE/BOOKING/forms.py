@@ -18,3 +18,7 @@ class DoctorLeaveForm(forms.ModelForm):
             "date": forms.DateInput(attrs={"type": "date"}),
             "reason": forms.Textarea(attrs={"rows": 3}),
         }
+
+class RescheduleForm(forms.Form):
+    date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    time = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time'}))
