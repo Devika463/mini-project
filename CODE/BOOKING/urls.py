@@ -25,4 +25,8 @@ urlpatterns = [
 
     # Notifications
     path("notifications/", views.my_notifications, name="my_notifications"),
+    path("search-doctors/", views.search_doctors, name="search_doctors"),
+    path("appointment/<int:appointment_id>/reschedule/", views.reschedule_appointment, name="reschedule_appointment"),
+
+
 ]
