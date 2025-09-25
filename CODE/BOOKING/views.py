@@ -237,4 +237,44 @@ def my_notifications(request):
     notifications = Notification.objects.filter(patient=patient).order_by("-created_at")
     return render(request, "notifications.html", {"notifications": notifications})
 
+@login_required
+def search_doctors(request):
+    specialization = request.GET.get("specialization")  # selected from dropdown
+
+    if specialization and specialization != "All":
+        doctors = Doctor.objects.filter(specialization=specialization)
+    else:
+        doctors = Doctor.objects.all()
+
+    # Get unique specializations for dropdown
+    specializations = Doctor.objects.values_list("specialization", flat=True).distinct()
+
+    return render(request, "search_doctors.html", {
+        "doctors": doctors,
+        "specializations": specializations,
+        "selected": specialization,
+    })
+@login_required
+def reschedule_appointment(request, appointment_id):
+    appointment = get_object_or_404(Appointment, id=appointment_id, patient=request.user.patient)
+
+    if request.method == "POST":
+        form = RescheduleForm(request.POST)
+        if form.is_valid():
+            new_date = form.cleaned_data['date']
+            new_time = form.cleaned_data['time']
+
+            # Update appointment
+            appointment.date = new_date
+            appointment.time = new_time
+            appointment.status = "Booked"
+            appointment.save()
+
+            messages.success(request, "Your appointment has been rescheduled successfully!")
+            return redirect("my_appointments")
+    else:
+        form = RescheduleForm()
+
+    return render(request, "reschedule_appointment.html", {"form": form, "appointment": appointment})
+
 
