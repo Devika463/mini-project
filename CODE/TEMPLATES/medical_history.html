@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">📝 My Medical History</h2>
+
+    {% if history %}
+        <div class="list-group">
+            {% for record in history %}
+                <div class="list-group-item">
+                    <h5 class="mb-1">Dr. {{ record.doctor.user.username }}</h5>
+                    <p class="mb-1"><strong>Date:</strong> {{ record.created_at|date:"M d, Y H:i" }}</p>
+                    <p class="mb-1"><strong>Notes:</strong> {{ record.notes }}</p>
+                    {% if record.prescription %}
+                        <p class="mb-1"><strong>Prescription:</strong> {{ record.prescription }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-muted">No medical history records yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
