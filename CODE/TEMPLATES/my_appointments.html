@@ -18,7 +18,7 @@
       <tbody>
         {% for appt in appointments %}
         <tr>
-          <td>{{ appt.doctor.user.username }}</td>
+          <td>Dr. {{ appt.doctor.user.username }}</td>
           <td>{{ appt.date }}</td>
           <td>{{ appt.time }}</td>
           <td>
@@ -34,10 +34,18 @@
           </td>
           <td>
             {% if appt.status != "Cancelled" and appt.status != "Completed" %}
+              <!-- Cancel Button -->
               <form method="post" action="{% url 'cancel_appointment' appt.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
               </form>
+
+            {% elif appt.status == "Cancelled" %}
+              <!-- Reschedule Button -->
+              <a href="{% url 'reschedule_appointment' appt.id %}" class="btn btn-sm btn-warning">
+                Reschedule
+              </a>
+
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
