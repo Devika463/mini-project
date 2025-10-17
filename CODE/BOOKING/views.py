@@ -6,11 +6,19 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.utils.timezone import now
 from django.db.models import Count, Q
-from .forms import PatientSignUpForm, DoctorLeaveForm
-from .models import Doctor, Patient, Appointment, DoctorLeave
+from .forms import PatientSignUpForm, DoctorLeaveForm, MedicalHistoryForm, RescheduleForm
+from .models import Doctor, Patient, Appointment, DoctorLeave, Notification, MedicalHistory
 from .utils import send_sms
-from .models import Notification
-from django.contrib.auth.views import LoginView
+from django.contrib.admin.views.decorators import staff_member_required
+from .forms import DoctorSignUpForm
+from django.contrib.auth.forms import UserCreationForm
+from .forms import PatientRegisterForm
+from .forms import DoctorScheduleForm
+from .models import DoctorSchedule
+
+# ====================
+# AUTH VIEWS
+# ====================
 
 class DoctorLoginView(LoginView):
     template_name = "doctor_login.html"
@@ -18,8 +26,23 @@ class DoctorLoginView(LoginView):
     def get_success_url(self):
         return "/doctor-dashboard/"   # Redirect to doctor dashboard
 
+
+class PatientLoginView(LoginView):
+    template_name = "login.html"
+
+
+class PatientLogoutView(LogoutView):
+    pass
+
+
+# ====================
+# GENERAL VIEWS
+# ====================
+
 def welcome(request):
     return render(request, "welcome.html")
+
+
 def home(request):
     doctors = Doctor.objects.all()
     return render(request, "home.html", {"doctors": doctors})
@@ -29,12 +52,10 @@ def patient_register(request):
     if request.method == "POST":
         form = PatientSignUpForm(request.POST)
         if form.is_valid():
-            # Save User
             phone = form.cleaned_data.pop("phone", "")
-            user = form.save(commit=True)  # creates User
-            # Create Patient profile entry
+            user = form.save(commit=True)
             Patient.objects.create(user=user, phone=phone)
-            login(request, user)  # auto-login
+            login(request, user)
             messages.success(request, "Registration successful. Welcome!")
             return redirect("home")
         else:
@@ -44,23 +65,17 @@ def patient_register(request):
     return render(request, "register.html", {"form": form})
 
 
-# Use Django's built-in login/logout views
-class PatientLoginView(LoginView):
-    template_name = "login.html"
-
-
-class PatientLogoutView(LogoutView):
-    # uses LOGOUT_REDIRECT_URL from settings
-    pass
-
+# ====================
+# PATIENT VIEWS
+# ====================
 
 @login_required
 def my_appointments(request):
-    try:
-        patient = Patient.objects.get(user=request.user)
-    except Patient.DoesNotExist:
+    """Show patient upcoming and past appointments."""
+    if not hasattr(request.user, "patient"):
         return HttpResponseForbidden("You are not registered as a patient.")
 
+    patient = request.user.patient
     today = now().date()
 
     upcoming = (
@@ -75,28 +90,67 @@ def my_appointments(request):
         .order_by("-date", "-time")
     )
 
-    return render(
-        request,
-        "my_appointments.html",
-        {"upcoming": upcoming, "past": past},
-    )
+    return render(request, "my_appointments.html", {"upcoming": upcoming, "past": past})
 
 
 @login_required
-def doctor_dashboard(request):
-    if not hasattr(request.user, "doctor"):
-        return HttpResponseForbidden("Only doctors can access this page.")
+def patient_history(request):
+    """Appointment history (upcoming & past)."""
+    if not hasattr(request.user, "patient"):
+        return HttpResponseForbidden("Only patients can view this page.")
 
-    doctor = request.user.doctor
-    appointments = doctor.appointment_set.all()
-    return render(request, "doctor_dashboard.html", {"appointments": appointments})
+    patient = request.user.patient
+    today = now().date()
+
+    upcoming = Appointment.objects.filter(patient=patient, date__gte=today).order_by("date", "time")
+    past = Appointment.objects.filter(patient=patient, date__lt=today).order_by("-date", "-time")
+
+    return render(request, "patient_history.html", {"upcoming": upcoming, "past": past})
+
+
+@login_required
+def patient_medical_history(request):
+    """Patient medical history with doctor notes/diagnosis."""
+    if not hasattr(request.user, "patient"):
+        return HttpResponseForbidden("Only patients can view their medical history.")
+
+    patient = request.user.patient
+    history = MedicalHistory.objects.filter(patient=patient).order_by("-created_at")
+
+    return render(request, "medical_history.html", {"history": history})
+
+
+@login_required
+def my_notifications(request):
+    if not hasattr(request.user, "patient"):
+        return HttpResponseForbidden("Only patients can view notifications.")
+
+    patient = request.user.patient
+    notifications = Notification.objects.filter(patient=patient).order_by("-created_at")
+    return render(request, "notifications.html", {"notifications": notifications})
+
+
+@login_required
+def search_doctors(request):
+    specialization = request.GET.get("specialization")
+
+    if specialization and specialization != "All":
+        doctors = Doctor.objects.filter(specialization=specialization)
+    else:
+        doctors = Doctor.objects.all()
+
+    specializations = Doctor.objects.values_list("specialization", flat=True).distinct()
+
+    return render(request, "search_doctors.html", {
+        "doctors": doctors,
+        "specializations": specializations,
+        "selected": specialization,
+    })
 
 
 @login_required
 def book_appointment(request):
-    try:
-        patient = Patient.objects.get(user=request.user)
-    except Patient.DoesNotExist:
+    if not hasattr(request.user, "patient"):
         return HttpResponseForbidden("Only patients can book appointments.")
 
     if request.method == "POST":
@@ -105,14 +159,9 @@ def book_appointment(request):
         time = request.POST.get("time")
 
         doctor = Doctor.objects.get(id=doctor_id)
-        patient = Patient.objects.get(user=request.user)
+        patient = request.user.patient
 
-        Appointment.objects.create(
-            doctor=doctor,
-            patient=patient,
-            date=date,
-            time=time,
-        )
+        Appointment.objects.create(doctor=doctor, patient=patient, date=date, time=time)
         messages.success(request, "Appointment requested successfully.")
         return redirect("my_appointments")
 
@@ -141,8 +190,90 @@ def cancel_appointment(request, appointment_id):
 
 
 @login_required
+def reschedule_appointment(request, appointment_id):
+    appointment = get_object_or_404(Appointment, id=appointment_id, patient=request.user.patient)
+
+    if request.method == "POST":
+        form = RescheduleForm(request.POST)
+        if form.is_valid():
+            new_date = form.cleaned_data['date']
+            new_time = form.cleaned_data['time']
+
+            appointment.date = new_date
+            appointment.time = new_time
+            appointment.status = "Booked"
+            appointment.save()
+
+            messages.success(request, "Your appointment has been rescheduled successfully!")
+            return redirect("my_appointments")
+    else:
+        form = RescheduleForm()
+
+    return render(request, "reschedule_appointment.html", {"form": form, "appointment": appointment})
+
+
+# ====================
+# DOCTOR VIEWS
+# ====================
+
+@login_required
+def doctor_dashboard(request):
+    if not hasattr(request.user, "doctor"):
+        return HttpResponseForbidden("Only doctors can access this page.")
+
+    doctor = request.user.doctor
+    appointments = doctor.appointment_set.all()
+    return render(request, "doctor_dashboard.html", {"appointments": appointments})
+
+
+@login_required
+def doctor_report(request):
+    if not hasattr(request.user, "doctor"):
+        return redirect("home")
+
+    doctor = request.user.doctor
+    stats = doctor.appointment_set.values("status").annotate(total=Count("status"))
+
+    summary = {"Booked": 0, "Confirmed": 0, "Completed": 0, "Cancelled": 0}
+    for item in stats:
+        summary[item["status"]] = item["total"]
+
+    return render(request, "doctor_report.html", {"summary": summary})
+
+
+@login_required
+def doctor_apply_leave(request):
+    if not hasattr(request.user, "doctor"):
+        return HttpResponseForbidden("Only doctors can apply leave.")
+
+    doctor = request.user.doctor
+
+    if request.method == "POST":
+        form = DoctorLeaveForm(request.POST)
+        if form.is_valid():
+            leave = form.save(commit=False)
+            leave.doctor = doctor
+            leave.save()
+
+            appointments = Appointment.objects.filter(doctor=doctor, date=leave.date, status="Booked")
+            for appt in appointments:
+                appt.status = "Cancelled"
+                appt.save()
+                Notification.objects.create(
+                    patient=appt.patient,
+                    message=f"Your appointment with Dr.{doctor.user.username} on {appt.date} has been cancelled due to leave."
+                )
+
+            messages.success(request, "Leave applied successfully! Patients have been notified.")
+            return redirect("doctor_dashboard")
+    else:
+        form = DoctorLeaveForm()
+
+    return render(request, "apply_leave.html", {"form": form})
+
+
+@login_required
 def appointment_action(request, pk):
-    """Doctor confirms/rejects/completes appointments for their own patients."""
     appt = get_object_or_404(Appointment, pk=pk)
 
     if not hasattr(request.user, "doctor") or appt.doctor.user != request.user:
@@ -167,114 +298,115 @@ def appointment_action(request, pk):
 
 
 @login_required
-def patient_history(request):
-    if not hasattr(request.user, "patient"):
-        return HttpResponseForbidden("Only patients can view this page.")
-
-    patient = request.user.patient
-    today = now().date()
-
-    upcoming = Appointment.objects.filter(patient=patient, date__gte=today).order_by("date", "time")
-    past = Appointment.objects.filter(patient=patient, date__lt=today).order_by("-date", "-time")
-
-    return render(request, "patient_history.html", {"upcoming": upcoming, "past": past})
-
-
-@login_required
-def doctor_report(request):
+def add_medical_history(request, patient_id):
     if not hasattr(request.user, "doctor"):
-        return redirect("home")
+        return HttpResponseForbidden("Only doctors can add history.")
 
-    doctor = request.user.doctor
-
-    stats = doctor.appointment_set.values("status").annotate(total=Count("status"))
-
-    summary = {"Booked": 0, "Confirmed": 0, "Completed": 0, "Cancelled": 0}
-    for item in stats:
-        summary[item["status"]] = item["total"]
-
-    return render(request, "doctor_report.html", {"summary": summary})
-
-@login_required
-def doctor_apply_leave(request):
-    if not hasattr(request.user, "doctor"):
-        return HttpResponseForbidden("Only doctors can apply leave.")
-
-    doctor = request.user.doctor
-
+    patient = get_object_or_404(Patient, id=patient_id)
     if request.method == "POST":
-        form = DoctorLeaveForm(request.POST)
+        form = MedicalHistoryForm(request.POST)
         if form.is_valid():
-            leave = form.save(commit=False)
-            leave.doctor = doctor
-            leave.save()
-
-            # Cancel booked appointments on that date
-            appointments = Appointment.objects.filter(
-                doctor=doctor, date=leave.date, status="Booked"
-            )
-            for appt in appointments:
-                appt.status = "Cancelled"
-                appt.save()
-                # Create notification record
-                Notification.objects.create(
-                    patient=appt.patient,
-                     message=f"Your appointment with Dr.{doctor.user.username} on {appt.date} has been cancelled due to leave."
-                     )
-
-            messages.success(request, "Leave applied successfully! Patients have been notified.")
-            return redirect("doctor_dashboard")
+            history = form.save(commit=False)
+            history.patient = patient
+            history.doctor = request.user.doctor
+            history.save()
+            return redirect("view_medical_history", patient_id=patient.id)
     else:
-        form = DoctorLeaveForm()
+        form = MedicalHistoryForm()
 
-    return render(request, "apply_leave.html", {"form": form})
-@login_required
-def my_notifications(request):
-    if not hasattr(request.user, "patient"):
-        return HttpResponseForbidden("Only patients can view notifications.")
-    
-    patient = request.user.patient
-    notifications = Notification.objects.filter(patient=patient).order_by("-created_at")
-    return render(request, "notifications.html", {"notifications": notifications})
+    return render(request, "add_medical_history.html", {"form": form, "patient": patient})
+
 
 @login_required
-def search_doctors(request):
-    specialization = request.GET.get("specialization")  # selected from dropdown
-
-    if specialization and specialization != "All":
-        doctors = Doctor.objects.filter(specialization=specialization)
+def view_medical_history(request, patient_id=None):
+    """Doctor or patient can view medical history."""
+    if hasattr(request.user, "patient"):
+        patient = request.user.patient
     else:
-        doctors = Doctor.objects.all()
+        if not patient_id:
+            return HttpResponseForbidden("Doctor must specify patient.")
+        patient = get_object_or_404(Patient, id=patient_id)
 
-    # Get unique specializations for dropdown
-    specializations = Doctor.objects.values_list("specialization", flat=True).distinct()
+    history = MedicalHistory.objects.filter(patient=patient).order_by("-created_at")
+    return render(request, "medical_history.html", {"patient": patient, "history": history})
 
-    return render(request, "search_doctors.html", {
-        "doctors": doctors,
-        "specializations": specializations,
-        "selected": specialization,
+@staff_member_required
+def daily_appointments(request):
+    selected_date = request.GET.get("date")
+
+    appointments = []
+    if selected_date:
+        appointments = Appointment.objects.filter(date=selected_date).order_by("time")
+
+    return render(request, "daily_appointments.html", {
+        "appointments": appointments,
+        "selected_date": selected_date
     })
 @login_required
-def reschedule_appointment(request, appointment_id):
-    appointment = get_object_or_404(Appointment, id=appointment_id, patient=request.user.patient)
+def doctor_register(request):
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        specialization = request.POST.get("specialization")
+
+        if form.is_valid():
+            user = form.save()  # this saves User
+            # create Doctor entry linked to User
+            Doctor.objects.create(user=user, specialization=specialization)
+            return redirect("login")  # after registration redirect to login
+    else:
+        form = UserCreationForm()
+    return render(request, "doctor_register.html", {"form": form})
+def patient_register(request):
+    if request.method == "POST":
+        form = PatientRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            phone = form.cleaned_data.get("phone")
+            Patient.objects.create(user=user, phone=phone)
+            return redirect("home")   # or patient dashboard
+    else:
+        form = PatientRegisterForm()
+    return render(request, "patient_register.html", {"form": form})
+@login_required
+def doctor_schedule_list(request):
+    """List and add doctor's schedules."""
+    if not hasattr(request.user, "doctor"):
+        return HttpResponseForbidden("Only doctors can manage schedules.")
+
+    doctor_user = request.user.doctor   # because DoctorSchedule expects User
+    schedules = DoctorSchedule.objects.filter(doctor=doctor_user)
 
     if request.method == "POST":
-        form = RescheduleForm(request.POST)
+        form = DoctorScheduleForm(request.POST)
         if form.is_valid():
-            new_date = form.cleaned_data['date']
-            new_time = form.cleaned_data['time']
-
-            # Update appointment
-            appointment.date = new_date
-            appointment.time = new_time
-            appointment.status = "Booked"
-            appointment.save()
-
-            messages.success(request, "Your appointment has been rescheduled successfully!")
-            return redirect("my_appointments")
+            schedule = form.save(commit=False)
+            schedule.doctor = doctor_user
+            schedule.save()
+            messages.success(request, "Schedule added successfully.")
+            return redirect("doctor_schedule_list")
     else:
-        form = RescheduleForm()
+        form = DoctorScheduleForm()
 
-    return render(request, "reschedule_appointment.html", {"form": form, "appointment": appointment})
+    return render(request, "doctor/schedule_list.html", {
+        "form": form,
+        "schedules": schedules
+    })
+@login_required
+def doctor_schedule_add(request):
+    if not hasattr(request.user, "doctor"):
+        return HttpResponseForbidden("Only doctors can add schedules.")
 
+    doctor = request.user.doctor
 
+    if request.method == "POST":
+        form = DoctorScheduleForm(request.POST)
+        if form.is_valid():
+            schedule = form.save(commit=False)
+            schedule.doctor = doctor
+            schedule.save()
+            messages.success(request, "Schedule added successfully.")
+            return redirect("doctor_schedule_list")
+    else:
+        form = DoctorScheduleForm()
+
+    return render(request, "doctor/schedule_add.html", {"form": form})
