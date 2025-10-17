@@ -1,0 +1,15 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+    <div class="module">
+        <table>
+            <caption>Custom Reports</caption>
+            <tr>
+                <th scope="row"><a href="{% url 'daily_appointments' %}">📅 Daily Appointments</a></th>
+                <td>View all appointments for a selected date</td>
+            </tr>
+        </table>
+    </div>
+
+    {{ block.super }}
+{% endblock %}
