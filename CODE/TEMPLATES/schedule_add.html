@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <h2>Add Schedule</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Save</button>
+    <a href="{% url 'doctor_schedule_list' %}" class="btn btn-secondary">Back</a>
+  </form>
+</div>
+{% endblock %}
