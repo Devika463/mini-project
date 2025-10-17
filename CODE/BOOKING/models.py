@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     specialization = models.CharField(max_length=100)
@@ -45,5 +44,24 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.patient.user.username}"
+class MedicalHistory(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    notes = models.TextField(blank=True, null=True)   # ✅ must exist
+    prescription = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+class DoctorSchedule(models.Model):
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return f"{self.doctor.username} - {self.date} ({self.start_time} - {self.end_time})"
+
+
+
+
+
 
 
