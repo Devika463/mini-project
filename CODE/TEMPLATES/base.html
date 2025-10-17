@@ -34,21 +34,21 @@
         {% if user.is_authenticated %}
             {% if user.patient %}
                 <!-- ✅ Patient Menu -->
-                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'book_appointment' %}">Book</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'my_appointments' %}">Appointments</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'patient_history' %}">History</a></li>
-                <li class="nav-item"><a class="nav-link text-danger" href="{% url 'logout' %}">Logout</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'my_notifications' %}">Notifications</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'search_doctors' %}">Find Doctors</a></li>
-
-
+                <li class="nav-item"><a class="nav-link" href="{% url 'book_appointment' %}">Book Appointment</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'my_appointments' %}">My Appointments</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'my_notifications' %}">Notifications</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'patient_medical_history' %}">Medical History</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'patient_history' %}">Appointment History</a></li>
+                <li class="nav-item"><a class="nav-link text-danger" href="{% url 'logout' %}">Logout</a></li>
 
             {% elif user.doctor %}
                 <!-- ✅ Doctor Menu -->
                 <li class="nav-item"><a class="nav-link" href="{% url 'doctor_dashboard' %}">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'doctor_report' %}">Reports</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'doctor_apply_leave' %}">Apply Leave</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'doctor_schedule_list' %}">Schedule</a></li>
                 <li class="nav-item"><a class="nav-link text-danger" href="{% url 'logout' %}">Logout</a></li>
             {% endif %}
 
@@ -56,6 +56,7 @@
             <!-- ✅ Guest / Welcome Navbar -->
             <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'patient_register' %}">Register</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'doctor_register' %}">Doctor Register</a></li>
             <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
         {% endif %}
 
