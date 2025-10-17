@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">📅 Daily Appointments</h2>
+
+    <form method="get" class="mb-3">
+        <label for="date">Select Date:</label>
+        <input type="date" name="date" id="date" value="{{ selected_date }}">
+        <button type="submit" class="btn btn-primary btn-sm">Show</button>
+    </form>
+
+    {% if appointments %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Doctor</th>
+                    <th>Patient</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appt in appointments %}
+                    <tr>
+                        <td>{{ appt.time }}</td>
+                        <td>Dr. {{ appt.doctor.user.username }}</td>
+                        <td>{{ appt.patient.user.username }}</td>
+                        <td>{{ appt.status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif selected_date %}
+        <p>No appointments found for {{ selected_date }}.</p>
+    {% endif %}
+</div>
+{% endblock %}
